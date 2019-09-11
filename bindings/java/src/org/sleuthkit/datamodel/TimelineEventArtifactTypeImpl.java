@@ -139,7 +139,7 @@ class TimelineEventArtifactTypeImpl extends TimelineEventTypeImpl {
 		try {
 			return artf.getAttribute(attrType);
 		} catch (TskCoreException ex) {
-			logger.log(Level.SEVERE, MessageFormat.format("Error getting attribute from artifact {0}.", artf.getArtifactID()), ex); // NON-NLS
+			logger.log(Level.SEVERE, MessageFormat.format("Error getting attribute from artifact {0}.", artf.getId()), ex); // NON-NLS
 			return null;
 		}
 	}

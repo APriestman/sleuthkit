@@ -228,7 +228,7 @@ public final class TimelineManager {
 					return new TimelineEvent(eventID,
 							results.getLong("data_source_obj_id"),
 							results.getLong("file_obj_id"),
-							results.getLong("artifact_id"),
+							results.getLong("artifact_obj_id"),
 							results.getLong("time"),
 							type, results.getString("full_description"),
 							results.getString("med_description"),
@@ -721,21 +721,21 @@ public final class TimelineManager {
 	 * @throws TskCoreException
 	 */
 	private Map<Long, Long> getEventAndDescriptionIDs(long fileObjID, boolean includeArtifacts) throws TskCoreException {
-		return getEventAndDescriptionIDsHelper(fileObjID, (includeArtifacts ? "" : " AND artifact_id IS NULL"));
+		return getEventAndDescriptionIDsHelper(fileObjID, (includeArtifacts ? "" : " AND artifact_obj_id IS NULL"));
 	}
 
 	/**
-	 * Get events that match both the file and artifact IDs
+	 * Get events that match both the file and artifact object IDs
 	 *
 	 * @param fileObjID
-	 * @param artifactID
+	 * @param artifactObjID
 	 *
 	 * @return A map from event_id to event_decsription_id.
 	 *
 	 * @throws TskCoreException
 	 */
-	private Map<Long, Long> getEventAndDescriptionIDs(long fileObjID, Long artifactID) throws TskCoreException {
-		return getEventAndDescriptionIDsHelper(fileObjID, " AND artifact_id = " + artifactID);
+	private Map<Long, Long> getEventAndDescriptionIDs(long fileObjID, Long artifactObjID) throws TskCoreException {
+		return getEventAndDescriptionIDsHelper(fileObjID, " AND artifact_obj_id = " + artifactObjID);
 	}
 
 	/**
@@ -781,7 +781,7 @@ public final class TimelineManager {
 	 * @param fileObjId  the obj_id that this tag applies to, the id of the
 	 *                   content that the artifact is derived from for artifact
 	 *                   tags
-	 * @param artifactID the artifact_id that this tag applies to, or null if
+	 * @param artifactObjID the artifact_obj_id that this tag applies to, or null if
 	 *                   this is a content tag
 	 * @param tagged     true to mark the matching events tagged, false to mark
 	 *                   them as untagged
@@ -790,13 +790,13 @@ public final class TimelineManager {
 	 *
 	 * @throws org.sleuthkit.datamodel.TskCoreException
 	 */
-	public Set<Long> setEventsTagged(long fileObjId, Long artifactID, boolean tagged) throws TskCoreException {
+	public Set<Long> setEventsTagged(long fileObjId, Long artifactObjID, boolean tagged) throws TskCoreException {
 		sleuthkitCase.acquireSingleUserCaseWriteLock();
 		Map<Long, Long> eventIDs;  // map from event_ids to event_description_ids
-		if (Objects.isNull(artifactID)) {
+		if (Objects.isNull(artifactObjID)) {
 			eventIDs = getEventAndDescriptionIDs(fileObjId, false);
 		} else {
-			eventIDs = getEventAndDescriptionIDs(fileObjId, artifactID);
+			eventIDs = getEventAndDescriptionIDs(fileObjId, artifactObjID);
 		}
 
 		//update tagged state for all event with selected ids
@@ -1007,7 +1007,7 @@ public final class TimelineManager {
 		}
 
 		//build dynamic parts of query
-        String querySql = "SELECT time, file_obj_id, data_source_obj_id, artifact_id, " // NON-NLS
+        String querySql = "SELECT time, file_obj_id, data_source_obj_id, artifact_obj_id, " // NON-NLS
                           + "  event_id, " //NON-NLS
                           + " hash_hit, " //NON-NLS
                           + " tagged, " //NON-NLS
@@ -1031,7 +1031,7 @@ public final class TimelineManager {
 						resultSet.getLong("event_id"), // NON-NLS
 						resultSet.getLong("data_source_obj_id"), // NON-NLS
 						resultSet.getLong("file_obj_id"), // NON-NLS
-						resultSet.getLong("artifact_id"), // NON-NLS
+						resultSet.getLong("artifact_obj_id"), // NON-NLS
 						resultSet.getLong("time"), // NON-NLS
 						eventType,
 						resultSet.getString("full_description"), // NON-NLS
