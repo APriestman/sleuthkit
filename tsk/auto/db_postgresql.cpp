@@ -669,7 +669,7 @@ int TskDbPostgreSQL::initialize() {
             " tagged INTEGER NOT NULL, " //boolean 
             " FOREIGN KEY(data_source_obj_id) REFERENCES data_source_info(obj_id), "
             " FOREIGN KEY(file_obj_id) REFERENCES tsk_objects(obj_id), "
-            " FOREIGN KEY(artifact_obj_id) REFERENCES tsk_objects(obj_id) ,"
+            " FOREIGN KEY(artifact_obj_id) REFERENCES tsk_objects(obj_id) ," // artifact_obj_id in blackboard_artifacts can not be made UNIQUE 
 			" UNIQUE (full_description, file_obj_id, artifact_obj_id))",
             "Error creating tsk_event_descriptions table: %s\n")
         ||

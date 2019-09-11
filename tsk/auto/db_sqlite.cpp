@@ -431,7 +431,7 @@ TskDbSqlite::initialize()
 	        " short_description TEXT,"
 	        " data_source_obj_id INTEGER NOT NULL REFERENCES data_source_info(obj_id), "
 	        " file_obj_id INTEGER NOT NULL REFERENCES tsk_objects(obj_id), "
-	        " artifact_obj_id INTEGER REFERENCES tsk_objects(obj_id), "
+	        " artifact_obj_id INTEGER REFERENCES tsk_objects(obj_id), " // artifact_obj_id in blackboard_artifacts can not be made UNIQUE 
 	        " hash_hit INTEGER NOT NULL, " //boolean 
 	        " tagged INTEGER NOT NULL, " //boolean 
 			" UNIQUE (full_description, file_obj_id, artifact_obj_id))",
