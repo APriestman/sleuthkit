@@ -1765,12 +1765,12 @@ public class SleuthkitCase {
 					+ " short_description TEXT,"
 					+ " data_source_obj_id BIGINT NOT NULL, "
 					+ " file_obj_id BIGINT NOT NULL, "
-					+ " artifact_id BIGINT, "
+					+ " artifact_obj_id BIGINT, "
 					+ " hash_hit INTEGER NOT NULL, " //boolean 
 					+ " tagged INTEGER NOT NULL, " //boolean 
 					+ " FOREIGN KEY(data_source_obj_id) REFERENCES data_source_info(obj_id), "
 					+ " FOREIGN KEY(file_obj_id) REFERENCES tsk_files(obj_id), "
-					+ " FOREIGN KEY(artifact_id) REFERENCES blackboard_artifacts(artifact_id))"
+					+ " FOREIGN KEY(artifact_obj_id) REFERENCES blackboard_artifacts(artifact_obj_id))"
 			);
 
 			statement.execute("CREATE TABLE tsk_events ( "
@@ -1785,7 +1785,7 @@ public class SleuthkitCase {
 			statement.execute("CREATE INDEX events_type ON tsk_events(event_type_id)");
 			statement.execute("CREATE INDEX events_data_source_obj_id  ON tsk_event_descriptions(data_source_obj_id) ");
 			statement.execute("CREATE INDEX events_file_obj_id  ON tsk_event_descriptions(file_obj_id ");
-			statement.execute("CREATE INDEX events_artifact_id  ON tsk_event_descriptions(artifact_id) ");
+			statement.execute("CREATE INDEX events_artifact_obj_id  ON tsk_event_descriptions(artifact_obj_id) ");
 			statement.execute("CREATE INDEX events_sub_type_time ON tsk_events(event_type_id,  time) ");
 			statement.execute("CREATE INDEX events_time  ON tsk_events(time ");
 			return new CaseDbSchemaVersionNumber(8, 2);
@@ -1884,13 +1884,13 @@ public class SleuthkitCase {
 					+ " short_description TEXT,"
 					+ " data_source_obj_id BIGINT NOT NULL, "
 					+ " file_obj_id BIGINT NOT NULL, "
-					+ " artifact_id BIGINT, "
+					+ " artifact_obj_id BIGINT, "
 					+ " hash_hit INTEGER NOT NULL, " //boolean 
 					+ " tagged INTEGER NOT NULL, " //boolean 
 					+ " UNIQUE(full_description, file_obj_id, artifact_id), "
 					+ " FOREIGN KEY(data_source_obj_id) REFERENCES data_source_info(obj_id), "
 					+ " FOREIGN KEY(file_obj_id) REFERENCES tsk_files(obj_id), "
-					+ " FOREIGN KEY(artifact_id) REFERENCES blackboard_artifacts(artifact_id))"
+					+ " FOREIGN KEY(artifact_obj_id) REFERENCES blackboard_artifacts(artifact_obj_id))"
 			);
 
 			// create a new table

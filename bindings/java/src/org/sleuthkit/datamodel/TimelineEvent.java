@@ -34,10 +34,10 @@ public final class TimelineEvent {
 	private final long fileObjID;
 
 	/**
-	 * The TSK artifact ID of the file this event is derived from. Null, if this
+	 * The TSK artifact object ID of the file this event is derived from. Null, if this
 	 * event is not derived from an artifact.
 	 */
-	private final Long artifactID;
+	private final Long artifactObjID;
 
 	/**
 	 * The TSK datasource ID of the datasource this event belongs to.
@@ -76,7 +76,7 @@ public final class TimelineEvent {
 	 * @param dataSourceObjID Object Id for data source event is from
 	 * @param fileObjID       object id for non-artifact content that event is
 	 *                        associated with
-	 * @param artifactID      ID of artifact (not object id) if event came from
+	 * @param artifactObjID   Object ID of artifact if event came from
 	 *                        an artifact
 	 * @param time
 	 * @param type
@@ -84,7 +84,7 @@ public final class TimelineEvent {
 	 * @param hashHit
 	 * @param tagged
 	 */
-	TimelineEvent(long eventID, long dataSourceObjID, long fileObjID, Long artifactID,
+	TimelineEvent(long eventID, long dataSourceObjID, long fileObjID, Long artifactObjID,
 			long time, TimelineEventType type,
 			String fullDescription,
 			String medDescription,
@@ -93,7 +93,7 @@ public final class TimelineEvent {
 		this.eventID = eventID;
 		this.dataSourceObjID = dataSourceObjID;
 		this.fileObjID = fileObjID;
-		this.artifactID = Long.valueOf(0).equals(artifactID) ? null : artifactID;
+		this.artifactObjID = Long.valueOf(0).equals(artifactObjID) ? null : artifactObjID;
 		this.time = time;
 		this.type = type;
 		// This isn't the best design, but it was the most expediant way to reduce 
@@ -130,14 +130,14 @@ public final class TimelineEvent {
 	}
 
 	/**
-	 * Get the artifact id (not the object ID) of the artifact this event is
+	 * Get the artifact object id of the artifact this event is
 	 * derived from.
 	 *
-	 * @return An Optional containing the artifact ID. Will be empty if this
+	 * @return An Optional containing the artifact object ID. Will be empty if this
 	 *         event is not derived from an artifact
 	 */
-	public Optional<Long> getArtifactID() {
-		return Optional.ofNullable(artifactID);
+	public Optional<Long> getArtifactObjID() {
+		return Optional.ofNullable(artifactObjID);
 	}
 
 	/**

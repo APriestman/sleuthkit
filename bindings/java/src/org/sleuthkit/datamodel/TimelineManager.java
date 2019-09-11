@@ -430,7 +430,7 @@ public final class TimelineManager {
 		String query
 				= "SELECT event_id FROM tsk_events "
 				+ " LEFT JOIN tsk_event_descriptions on ( tsk_events.event_description_id = tsk_event_descriptions.event_description_id ) "
-				+ " WHERE artifact_id = " + artifact.getArtifactID();
+				+ " WHERE artifact_obj_id = " + artifact.getId();
 		sleuthkitCase.acquireSingleUserCaseReadLock();
 		try (CaseDbConnection con = sleuthkitCase.getConnection();
 				Statement stmt = con.createStatement();
@@ -472,7 +472,7 @@ public final class TimelineManager {
 	 *
 	 * @param dataSourceObjId
 	 * @param fileObjId
-	 * @param artifactID
+	 * @param artifactObjID
 	 * @param fullDescription
 	 * @param medDescription
 	 * @param shortDescription
@@ -484,18 +484,18 @@ public final class TimelineManager {
 	 *
 	 * @throws TskCoreException
 	 */
-	private long addEventDescription(long dataSourceObjId, long fileObjId, Long artifactID,
+	private long addEventDescription(long dataSourceObjId, long fileObjId, Long artifactObjID,
 			String fullDescription, String medDescription, String shortDescription,
 			boolean hasHashHits, boolean tagged, CaseDbConnection connection) throws TskCoreException {
 		String insertDescriptionSql
 				= "INSERT INTO tsk_event_descriptions ( "
-				+ "data_source_obj_id, file_obj_id, artifact_id,  "
+				+ "data_source_obj_id, file_obj_id, artifact_obj_id,  "
 				+ " full_description, med_description, short_description, "
 				+ " hash_hit, tagged "
 				+ " ) VALUES ("
 				+ dataSourceObjId + ","
 				+ fileObjId + ","
-				+ Objects.toString(artifactID, "NULL") + ","
+				+ Objects.toString(artifactObjID, "NULL") + ","
 				+ quotePreservingNull(fullDescription) + ","
 				+ quotePreservingNull(medDescription) + ","
 				+ quotePreservingNull(shortDescription) + ", "
@@ -653,7 +653,7 @@ public final class TimelineManager {
 		String fullDescription = eventPayload.getFullDescription();
 		String medDescription = eventPayload.getMediumDescription();
 		String shortDescription = eventPayload.getShortDescription();
-		long artifactID = artifact.getArtifactID();
+		long artifactObjID = artifact.getId();
 		long fileObjId = artifact.getObjectID();
 		long dataSourceObjectID = artifact.getDataSourceObjectID();
 
@@ -669,13 +669,13 @@ public final class TimelineManager {
 		sleuthkitCase.acquireSingleUserCaseWriteLock();
 		try (CaseDbConnection connection = getSleuthkitCase().getConnection();) {
 
-			long descriptionID = addEventDescription(dataSourceObjectID, fileObjId, artifactID,
+			long descriptionID = addEventDescription(dataSourceObjectID, fileObjId, artifactObjID,
 					fullDescription, medDescription, shortDescription,
 					hasHashHits, tagged, connection);
 
 			long eventID = addEventWithExistingDescription(time, eventType, descriptionID, connection);
 
-			event = new TimelineEvent(eventID, dataSourceObjectID, fileObjId, artifactID,
+			event = new TimelineEvent(eventID, dataSourceObjectID, fileObjId, artifactObjID,
 					time, eventType, fullDescription, medDescription, shortDescription,
 					hasHashHits, tagged);
 
@@ -929,7 +929,7 @@ public final class TimelineManager {
 	 *         columns required by the filters.
 	 */
 	static private String getAugmentedEventsTablesSQL(boolean needTags, boolean needHashSets, boolean needMimeTypes) {
-		return "( select event_id, time, tsk_event_descriptions.data_source_obj_id, file_obj_id, artifact_id, "
+		return "( select event_id, time, tsk_event_descriptions.data_source_obj_id, file_obj_id, artifact_obj_id, "
 				+ " full_description, med_description, short_description, tsk_events.event_type_id, super_type_id,"
 				+ " hash_hit, tagged "
 				+ (needTags ? ", tag_name_id, tag_id" : "")
@@ -944,13 +944,13 @@ public final class TimelineManager {
 						+ "			FROM tsk_event_descriptions LEFT OUTER JOIN content_tags ON (content_tags.obj_id = tsk_event_descriptions.file_obj_id) "
 						+ "	UNION ALL "
 						+ "		SELECT  event_description_id,  tag_name_id, tag_id "
-						+ "			FROM tsk_event_descriptions LEFT OUTER JOIN blackboard_artifact_tags ON (blackboard_artifact_tags.artifact_id = tsk_event_descriptions.artifact_id)"
+						+ "			FROM tsk_event_descriptions LEFT OUTER JOIN blackboard_artifact_tags ON (blackboard_artifact_tags.artifact_obj_id = tsk_event_descriptions.artifact_obj_id)"
 						+ " ) AS tsk_event_tags ON (tsk_event_tags.event_description_id = tsk_events.event_description_id)")
 						: "")
 				+ (needHashSets ? " LEFT OUTER JOIN ( "
 						+ "		SELECT DISTINCT value_text AS hash_set_name, obj_id  "
 						+ "		FROM blackboard_artifacts"
-						+ "		JOIN blackboard_attributes ON (blackboard_artifacts.artifact_id = blackboard_attributes.artifact_id)"
+						+ "		JOIN blackboard_attributes ON (blackboard_artifacts.artifact_obj_id = blackboard_attributes.artifact_obj_id)"
 						+ "		JOIN blackboard_artifact_types ON( blackboard_artifacts.artifact_type_id = blackboard_artifact_types.artifact_type_id)"
 						+ "		WHERE  blackboard_artifact_types.artifact_type_id = " + TSK_HASHSET_HIT.getTypeID()
 						+ "		AND blackboard_attributes.attribute_type_id = " + TSK_SET_NAME.getTypeID() + ") AS hash_set_hits"

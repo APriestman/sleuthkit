@@ -664,13 +664,13 @@ int TskDbPostgreSQL::initialize() {
             " short_description TEXT,"
             " data_source_obj_id BIGINT NOT NULL, "
             " file_obj_id BIGINT NOT NULL, "
-            " artifact_id BIGINT, "
+            " artifact_obj_id BIGINT, "
             " hash_hit INTEGER NOT NULL, " //boolean 
             " tagged INTEGER NOT NULL, " //boolean 
             " FOREIGN KEY(data_source_obj_id) REFERENCES data_source_info(obj_id), "
             " FOREIGN KEY(file_obj_id) REFERENCES tsk_objects(obj_id), "
-            " FOREIGN KEY(artifact_id) REFERENCES blackboard_artifacts(artifact_id) ,"
-			" UNIQUE (full_description, file_obj_id, artifact_id))",
+            " FOREIGN KEY(artifact_obj_id) REFERENCES tsk_objects(obj_id) ,"
+			" UNIQUE (full_description, file_obj_id, artifact_obj_id))",
             "Error creating tsk_event_descriptions table: %s\n")
         ||
         attempt_exec(
@@ -753,8 +753,8 @@ int TskDbPostgreSQL::createIndexes() {
             "Error creating events_data_source_obj_id index on tsk_event_descriptions: %s\n") ||
         attempt_exec("CREATE INDEX events_file_obj_id  ON tsk_event_descriptions(file_obj_id);",
             "Error creating events_file_obj_id index on tsk_event_descriptions: %s\n") ||
-        attempt_exec("CREATE INDEX events_artifact_id  ON tsk_event_descriptions(artifact_id);",
-            "Error creating events_artifact_id index on tsk_event_descriptions: %s\n") ||
+        attempt_exec("CREATE INDEX events_artifact_obj_id  ON tsk_event_descriptions(artifact_obj_id);",
+            "Error creating events_artifact_obj_id index on tsk_event_descriptions: %s\n") ||
         attempt_exec(
             "CREATE INDEX events_sub_type_time ON tsk_events(event_type_id,  time);",
             "Error creating events_sub_type_time index on tsk_events: %s\n") ||
@@ -1082,11 +1082,11 @@ int TskDbPostgreSQL::addMACTimeEvents(char*& zSQL, const int64_t data_source_obj
         if (event_description_id == -1)
         {
             if (0 > snprintf(zSQL, 2048 - 1,
-                             "INSERT INTO tsk_event_descriptions ( data_source_obj_id, file_obj_id , artifact_id, full_description, hash_hit, tagged) "
+                             "INSERT INTO tsk_event_descriptions ( data_source_obj_id, file_obj_id , artifact_obj_id, full_description, hash_hit, tagged) "
                              " VALUES ("
                              "%" PRId64 "," // data_source_obj_id
                              "%" PRId64 "," // file_obj_id
-                             "NULL," // fixed artifact_id
+                             "NULL," // fixed artifact_obj_id
                              "%s," // full_description
                              "0," // fixed hash_hit
                              "0" // fixed tagged

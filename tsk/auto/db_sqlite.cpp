@@ -431,10 +431,10 @@ TskDbSqlite::initialize()
 	        " short_description TEXT,"
 	        " data_source_obj_id INTEGER NOT NULL REFERENCES data_source_info(obj_id), "
 	        " file_obj_id INTEGER NOT NULL REFERENCES tsk_objects(obj_id), "
-	        " artifact_id INTEGER REFERENCES blackboard_artifacts(artifact_id), "
+	        " artifact_obj_id INTEGER REFERENCES tsk_objects(obj_id), "
 	        " hash_hit INTEGER NOT NULL, " //boolean 
 	        " tagged INTEGER NOT NULL, " //boolean 
-			" UNIQUE (full_description, file_obj_id, artifact_id))",
+			" UNIQUE (full_description, file_obj_id, artifact_obj_id))",
 	        "Error creating tsk_event_event_types table: %4\n")
 	    ||
 	    attempt_exec(
@@ -520,8 +520,8 @@ int TskDbSqlite::createIndexes()
                      "Error creating events_data_source_obj_id index on tsk_event_descriptions: %s\n") ||
         attempt_exec("CREATE INDEX events_file_obj_id  ON tsk_event_descriptions(file_obj_id);",
                      "Error creating events_file_obj_id index on tsk_event_descriptions: %s\n") ||
-        attempt_exec("CREATE INDEX events_artifact_id  ON tsk_event_descriptions(artifact_id);",
-                     "Error creating events_artifact_id index on tsk_event_descriptions: %s\n") ||
+        attempt_exec("CREATE INDEX events_artifact_obj_id  ON tsk_event_descriptions(artifact_obj_id);",
+                     "Error creating events_artifact_obj_id index on tsk_event_descriptions: %s\n") ||
         attempt_exec(
             "CREATE INDEX events_sub_type_time ON tsk_events(event_type_id,  time);",
             "Error creating events_sub_type_time index on tsk_events: %s\n") ||
@@ -1020,11 +1020,11 @@ int TskDbSqlite::addMACTimeEvents(const int64_t data_source_obj_id, const int64_
         {
             //insert common description for file
             char* descriptionSql = sqlite3_mprintf(
-                "INSERT INTO tsk_event_descriptions ( data_source_obj_id, file_obj_id , artifact_id,  full_description, hash_hit, tagged) "
+                "INSERT INTO tsk_event_descriptions ( data_source_obj_id, file_obj_id , artifact_obj_id,  full_description, hash_hit, tagged) "
                 " VALUES ("
                 "%" PRId64 "," // data_source_obj_id
                 "%" PRId64 "," // file_obj_id
-                "NULL," // fixed artifact_id
+                "NULL," // fixed artifact_objError creating blackboard_artifact_tags_id
                 "%Q," // full_description
                 "0," // fixed hash_hit
                 "0" // fixed tagged
