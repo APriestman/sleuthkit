@@ -1024,7 +1024,7 @@ int TskDbSqlite::addMACTimeEvents(const int64_t data_source_obj_id, const int64_
                 " VALUES ("
                 "%" PRId64 "," // data_source_obj_id
                 "%" PRId64 "," // file_obj_id
-                "NULL," // fixed artifact_objError creating blackboard_artifact_tags_id
+                "NULL," // fixed artifact_obj
                 "%Q," // full_description
                 "0," // fixed hash_hit
                 "0" // fixed tagged
