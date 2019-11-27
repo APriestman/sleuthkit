@@ -1942,9 +1942,9 @@ public class SleuthkitCase {
 		try (Statement statement = connection.createStatement();) {
 			// create pool info table
 			if (this.dbType.equals(DbType.SQLITE)) {
-				statement.execute("CREATE TABLE tsk_pool_info (obj_id INTEGER PRIMARY KEY, pool_type INTEGER NOT NULL, FOREIGN KEY(obj_id) REFERENCES tsk_objects(obj_id))");
+				statement.execute("CREATE TABLE tsk_pool_info (obj_id INTEGER PRIMARY KEY, pool_type INTEGER NOT NULL, FOREIGN KEY(obj_id) REFERENCES tsk_objects(obj_id) ON DELETE CASCADE)");
 			} else {
-				statement.execute("CREATE TABLE tsk_pool_info (obj_id BIGSERIAL PRIMARY KEY, pool_type INTEGER NOT NULL, FOREIGN KEY(obj_id) REFERENCES tsk_objects(obj_id))");
+				statement.execute("CREATE TABLE tsk_pool_info (obj_id BIGSERIAL PRIMARY KEY, pool_type INTEGER NOT NULL, FOREIGN KEY(obj_id) REFERENCES tsk_objects(obj_id) ON DELETE CASCADE)");
 			}
 
 			return new CaseDbSchemaVersionNumber(8, 4);
