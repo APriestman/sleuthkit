@@ -1786,10 +1786,10 @@ public class SleuthkitCase {
 			statement.execute("CREATE INDEX events_time ON tsk_events(time)");
 			statement.execute("CREATE INDEX events_type ON tsk_events(event_type_id)");
 			statement.execute("CREATE INDEX events_data_source_obj_id  ON tsk_event_descriptions(data_source_obj_id) ");
-			statement.execute("CREATE INDEX events_file_obj_id  ON tsk_event_descriptions(file_obj_id ");
+			statement.execute("CREATE INDEX events_file_obj_id  ON tsk_event_descriptions(file_obj_id) ");
 			statement.execute("CREATE INDEX events_artifact_id  ON tsk_event_descriptions(artifact_id) ");
 			statement.execute("CREATE INDEX events_sub_type_time ON tsk_events(event_type_id,  time) ");
-			statement.execute("CREATE INDEX events_time  ON tsk_events(time ");
+			statement.execute("CREATE INDEX events_time  ON tsk_events(time) ");
 			return new CaseDbSchemaVersionNumber(8, 2);
 
 		} finally {
@@ -1917,6 +1917,13 @@ public class SleuthkitCase {
 	
 	/**
 	 * Updates a schema version 8.3 database to a schema version 8.4 database.
+	 * 
+	 * This includes a bug fix update for a misnamed column in tsk_event_descriptions in
+	 * the previous update code.
+	 * 
+	 * Note that 8.4 also introduced cascading deletes on many of the database tables. We do not need to 
+	 * add these in the upgrade code because data sources in cases that were originally created with 8.3 
+	 * or earlier can not be deleted.
 	 *
 	 * @param schemaVersion The current schema version of the database.
 	 * @param connection    A connection to the case database.
@@ -1937,21 +1944,113 @@ public class SleuthkitCase {
 			return schemaVersion;
 		}
 
-		acquireSingleUserCaseWriteLock();
+		Statement statement = connection.createStatement();
+		ResultSet results = null;
 
-		try (Statement statement = connection.createStatement();) {
+		acquireSingleUserCaseWriteLock();				
+		try {
+			// This is a bug fix update for a misnamed column in tsk_event_descriptions in
+			// the previous update code.
+			if (null == getDatabaseType()) {
+				throw new TskCoreException("Unsupported data base type: " + getDatabaseType().toString());
+			}		
+			
+			switch (getDatabaseType()) {
+				case POSTGRESQL:
+					// Check if the misnamed column is present
+					results = statement.executeQuery("SELECT column_name FROM information_schema.columns "
+						+ "WHERE table_name='tsk_event_descriptions' and column_name='file_obj_id'");
+					if (results.next()) {
+						// In PostgreSQL we can rename the column if it exists
+						statement.execute("ALTER TABLE tsk_event_descriptions "
+							+ "RENAME COLUMN file_obj_id TO content_obj_id");
+						
+						//create tsk_events indices that were skipped in the 8.2 to 8.3 update code
+						statement.execute("CREATE INDEX events_data_source_obj_id  ON tsk_event_descriptions(data_source_obj_id) ");
+						statement.execute("CREATE INDEX events_content_obj_id  ON tsk_event_descriptions(content_obj_id) ");
+						statement.execute("CREATE INDEX events_artifact_id  ON tsk_event_descriptions(artifact_id) ");
+						statement.execute("CREATE INDEX events_sub_type_time ON tsk_events(event_type_id,  time) ");
+						statement.execute("CREATE INDEX events_time  ON tsk_events(time) ");
+					}
+					break;
+				case SQLITE:
+					boolean hasMisnamedColumn = false;
+					results = statement.executeQuery("pragma table_info('tsk_event_descriptions')");
+					while (results.next()) {
+						if (results.getString("name") != null && results.getString("name").equals("file_obj_id")) {
+							hasMisnamedColumn = true;
+							break;
+						}	
+					}
+					
+					if (hasMisnamedColumn) {
+						// Since we can't rename the column we'll need to make new tables and copy the data
+						statement.execute("CREATE TABLE temp_tsk_event_descriptions ("
+								+ " event_description_id INTEGER PRIMARY KEY, "
+								+ " full_description TEXT NOT NULL, "
+								+ " med_description TEXT, "
+								+ " short_description TEXT,"
+								+ " data_source_obj_id BIGINT NOT NULL, "
+								+ " content_obj_id BIGINT NOT NULL, "
+								+ " artifact_id BIGINT, "
+								+ " hash_hit INTEGER NOT NULL, " //boolean
+								+ " tagged INTEGER NOT NULL, " //boolean
+								+ " UNIQUE(full_description, content_obj_id, artifact_id), "
+								+ " FOREIGN KEY(data_source_obj_id) REFERENCES data_source_info(obj_id), "
+								+ " FOREIGN KEY(content_obj_id) REFERENCES tsk_files(obj_id), "
+								+ " FOREIGN KEY(artifact_id) REFERENCES blackboard_artifacts(artifact_id))"
+						);	
+					
+						statement.execute("CREATE TABLE temp_tsk_events ( "
+								+ " event_id INTEGER PRIMARY KEY, "
+								+ " event_type_id BIGINT NOT NULL REFERENCES tsk_event_types(event_type_id) ,"
+								+ " event_description_id BIGINT NOT NULL REFERENCES temp_tsk_event_descriptions(event_description_id),"
+								+ " time INTEGER NOT NULL, "
+								+ " UNIQUE (event_type_id, event_description_id, time))"
+						);	
+					
+						// Copy the data
+						statement.execute("INSERT INTO temp_tsk_event_descriptions(event_description_id, full_description, "
+								+ "med_description, short_description, data_source_obj_id, content_obj_id, artifact_id, "
+								+ "hash_hit, tagged) SELECT * FROM tsk_event_descriptions");
+
+						statement.execute("INSERT INTO temp_tsk_events(event_id, event_type_id, "
+								+ "event_description_id, time) SELECT * FROM tsk_events");
+					
+						// Drop the old tables
+						statement.execute("DROP TABLE tsk_events");
+						statement.execute("DROP TABLE tsk_event_descriptions");
+
+						// Rename the new tables
+						statement.execute("ALTER TABLE temp_tsk_event_descriptions RENAME TO tsk_event_descriptions");
+						statement.execute("ALTER TABLE temp_tsk_events RENAME TO tsk_events");
+						
+						//create tsk_events indices
+						statement.execute("CREATE INDEX events_data_source_obj_id  ON tsk_event_descriptions(data_source_obj_id) ");
+						statement.execute("CREATE INDEX events_content_obj_id  ON tsk_event_descriptions(content_obj_id) ");
+						statement.execute("CREATE INDEX events_artifact_id  ON tsk_event_descriptions(artifact_id) ");
+						statement.execute("CREATE INDEX events_sub_type_time ON tsk_events(event_type_id,  time) ");
+						statement.execute("CREATE INDEX events_time  ON tsk_events(time) ");
+					}
+					break;
+				default:
+					throw new TskCoreException("Unsupported data base type: " + getDatabaseType().toString());
+			}
+			
 			// create pool info table
 			if (this.dbType.equals(DbType.SQLITE)) {
 				statement.execute("CREATE TABLE tsk_pool_info (obj_id INTEGER PRIMARY KEY, pool_type INTEGER NOT NULL, FOREIGN KEY(obj_id) REFERENCES tsk_objects(obj_id) ON DELETE CASCADE)");
 			} else {
 				statement.execute("CREATE TABLE tsk_pool_info (obj_id BIGSERIAL PRIMARY KEY, pool_type INTEGER NOT NULL, FOREIGN KEY(obj_id) REFERENCES tsk_objects(obj_id) ON DELETE CASCADE)");
 			}
-
+			
 			return new CaseDbSchemaVersionNumber(8, 4);
 		} finally {
+			closeResultSet(results);
+			closeStatement(statement);
 			releaseSingleUserCaseWriteLock();
-		}
-	}	
+		}		
+	}
 
 	/**
 	 * Extract the extension from a file name.
@@ -9434,22 +9533,12 @@ public class SleuthkitCase {
 		ResultSet resultSet = null;
 		try {
 			PreparedStatement statement;
-			if (dbType == DbType.POSTGRESQL) {
-				// INSERT INTO tag_names (display_name, description, color, knownStatus) VALUES (?, ?, ?, ?) ON CONFLICT (display_name) DO UPDATE SET description = ?, color = ?, knownStatus = ?
-				statement = connection.getPreparedStatement(PREPARED_STATEMENT.INSERT_OR_UPDATE_TAG_NAME_POSTGRES, Statement.RETURN_GENERATED_KEYS);
-				statement.clearParameters();
-				statement.setString(5, description);
-				statement.setString(6, color.getName());
-				statement.setByte(7, knownStatus.getFileKnownValue());
-			} else {
-				// WITH new (display_name, description, color, knownStatus) 
-				// AS ( VALUES(?, ?, ?, ?)) INSERT OR REPLACE INTO tag_names 
-				// (tag_name_id, display_name, description, color, knownStatus) 
-				// SELECT old.tag_name_id, new.display_name, new.description, new.color, new.knownStatus 
-				// FROM new LEFT JOIN tag_names AS old ON new.display_name = old.display_name
-				statement = connection.getPreparedStatement(PREPARED_STATEMENT.INSERT_OR_UPDATE_TAG_NAME_SQLITE, Statement.RETURN_GENERATED_KEYS);
-				statement.clearParameters();
-			}
+			// INSERT INTO tag_names (display_name, description, color, knownStatus) VALUES (?, ?, ?, ?) ON CONFLICT (display_name) DO UPDATE SET description = ?, color = ?, knownStatus = ?
+			statement = connection.getPreparedStatement(PREPARED_STATEMENT.INSERT_OR_UPDATE_TAG_NAME, Statement.RETURN_GENERATED_KEYS);
+			statement.clearParameters();
+			statement.setString(5, description);
+			statement.setString(6, color.getName());
+			statement.setByte(7, knownStatus.getFileKnownValue());
 			statement.setString(1, displayName);
 			statement.setString(2, description);
 			statement.setString(3, color.getName());
@@ -10924,12 +11013,7 @@ public class SleuthkitCase {
 				+ "FROM tsk_objects INNER JOIN blackboard_artifacts " //NON-NLS
 				+ "ON tsk_objects.obj_id=blackboard_artifacts.obj_id " //NON-NLS
 				+ "WHERE (tsk_objects.par_obj_id = ?)"),
-		INSERT_OR_UPDATE_TAG_NAME_POSTGRES("INSERT INTO tag_names (display_name, description, color, knownStatus) VALUES (?, ?, ?, ?) ON CONFLICT (display_name) DO UPDATE SET description = ?, color = ?, knownStatus = ?"),
-		INSERT_OR_UPDATE_TAG_NAME_SQLITE("WITH new (display_name, description, color, knownStatus) "
-				+ "AS ( VALUES(?, ?, ?, ?)) INSERT OR REPLACE INTO tag_names "
-				+ "(tag_name_id, display_name, description, color, knownStatus) "
-				+ "SELECT old.tag_name_id, new.display_name, new.description, new.color, new.knownStatus "
-				+ "FROM new LEFT JOIN tag_names AS old ON new.display_name = old.display_name"),
+		INSERT_OR_UPDATE_TAG_NAME("INSERT INTO tag_names (display_name, description, color, knownStatus) VALUES (?, ?, ?, ?) ON CONFLICT (display_name) DO UPDATE SET description = ?, color = ?, knownStatus = ?"),
 		SELECT_EXAMINER_BY_ID("SELECT * FROM tsk_examiners WHERE examiner_id = ?"),
 		SELECT_EXAMINER_BY_LOGIN_NAME("SELECT * FROM tsk_examiners WHERE login_name = ?"),
 		UPDATE_FILE_NAME("UPDATE tsk_files SET name = ? WHERE obj_id = ?"),
