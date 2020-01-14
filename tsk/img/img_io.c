@@ -203,6 +203,8 @@ tsk_img_read(TSK_IMG_INFO * a_img_info, TSK_OFF_T a_off,
                 a_img_info->cache_off[cache_next]);
         }
 
+        printf("@@ Reading into cache\n");
+        fflush(stdout);
         read_count = a_img_info->read(a_img_info,
             a_img_info->cache_off[cache_next],
             a_img_info->cache[cache_next], read_size);

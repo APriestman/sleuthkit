@@ -1213,6 +1213,8 @@ tsk_fs_attr_read(const TSK_FS_ATTR * a_fs_attr, TSK_OFF_T a_offset,
 
             /* sparse files/runs just get 0s */
             if (data_run_cur->flags & TSK_FS_ATTR_RUN_FLAG_SPARSE) {
+                printf("@@ Apparently it's sparse...\n");
+                fflush(stdout);
                 memset(&a_buf[len_toread - len_remain], 0, len_inrun);
             }
 
@@ -1221,6 +1223,8 @@ tsk_fs_attr_read(const TSK_FS_ATTR * a_fs_attr, TSK_OFF_T a_offset,
              * return 0s if data is read from this type of run. */
             else if (data_run_cur->flags & TSK_FS_ATTR_RUN_FLAG_FILLER) {
                 memset(&a_buf[len_toread - len_remain], 0, len_inrun);
+                printf("@@ some kind of filler thing\n");
+                fflush(stdout);
                 if (tsk_verbose)
                     fprintf(stderr,
                         "tsk_fs_attr_read_type: File %" PRIuINUM
@@ -1235,6 +1239,8 @@ tsk_fs_attr_read(const TSK_FS_ATTR * a_fs_attr, TSK_OFF_T a_offset,
                         byteoffset_toread) >= a_fs_attr->nrd.initsize)
                 && ((a_flags & TSK_FS_FILE_READ_FLAG_SLACK) == 0)) {
                 memset(&a_buf[len_toread - len_remain], 0, len_inrun);
+                printf("@@ In case where we read past initsize\n");
+                fflush(stdout);
                 if (tsk_verbose)
                     fprintf(stderr,
                         "tsk_fs_attr_read: Returning 0s for read past end of initsize (%"
@@ -1249,6 +1255,8 @@ tsk_fs_attr_read(const TSK_FS_ATTR * a_fs_attr, TSK_OFF_T a_offset,
                 TSK_OFF_T fs_offset_b;
                 ssize_t cnt;
 
+                printf("@@ Reading data! ");
+                fflush(stdout);
                 // calculate the byte offset in the file system that we want to read from
                 fs_offset_b =
                     (data_run_cur->addr +
@@ -1257,6 +1265,8 @@ tsk_fs_attr_read(const TSK_FS_ATTR * a_fs_attr, TSK_OFF_T a_offset,
                 // add the byte offset in the block
                 fs_offset_b += byteoffset_toread;
 
+                printf(" offset: %lld  len: %lld\n", fs_offset_b, len_inrun);
+                fflush(stdout);
                 cnt =
                     tsk_fs_read_decrypt(fs, fs_offset_b,
                     &a_buf[len_toread - len_remain], len_inrun, 
@@ -1279,6 +1289,8 @@ tsk_fs_attr_read(const TSK_FS_ATTR * a_fs_attr, TSK_OFF_T a_offset,
                         a_fs_attr->nrd.initsize)
                     && ((a_flags & TSK_FS_FILE_READ_FLAG_SLACK) == 0)) {
 
+                    printf("@@ Some data was in non-initialized space?\n");
+                    fflush(stdout);
                     size_t uninit_off = (size_t) (a_fs_attr->nrd.initsize -
                         ((data_run_cur->offset +
                                 blkoffset_inrun) * fs->block_size +

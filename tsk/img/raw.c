@@ -235,6 +235,8 @@ raw_read(TSK_IMG_INFO * img_info, TSK_OFF_T offset, char *buf, size_t len)
     IMG_RAW_INFO *raw_info = (IMG_RAW_INFO *) img_info;
     int i;
 
+    printf("@@@ In raw_read!\n");
+    fflush(stdout);
     if (tsk_verbose) {
         tsk_fprintf(stderr,
             "raw_read: byte offset: %" PRIdOFF " len: %" PRIuSIZE "\n",
@@ -281,6 +283,7 @@ raw_read(TSK_IMG_INFO * img_info, TSK_OFF_T offset, char *buf, size_t len)
                     (TSK_OFF_T) read_len);
             }
 
+            printf("@@ raw_read_segment rel_offset: %lld   len: %lld\n", rel_offset, read_len);
             cnt = raw_read_segment(raw_info, i, buf, read_len, rel_offset);
             if (cnt < 0) {
                 return -1;

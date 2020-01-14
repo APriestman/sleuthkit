@@ -1965,6 +1965,9 @@ Java_org_sleuthkit_datamodel_SleuthkitJNI_readFileNat(JNIEnv * env,
     }
 
     //read attribute
+    printf("@@ (stdout) readFileNat offset %lld, len %lld\n", readOffset, len);
+
+    fflush(stdout);
     ssize_t bytesread = tsk_fs_attr_read(tsk_fs_attr,  readOffset, buf, (size_t) len,
         readFlag);
     if (bytesread == -1) {
