@@ -124,41 +124,71 @@ raw_read_segment(IMG_RAW_INFO * raw_info, int idx, char *buf,
 
 #ifdef TSK_WIN32
     {
+        // Default to the values that were passed in
+        TSK_OFF_T offset_to_read = rel_offset;
+        size_t len_to_read = len;
+        char ** buf_pointer = &buf;
+        char * sector_aligned_buf = NULL;
+
+        // If the offset to seek to isn't sector-aligned and this is a device, we need to start at the previous sector boundary and
+        // read some extra data.
+        if ((offset_to_read % raw_info->img_info.sector_size != 0)
+                && (TSTRNCMP(raw_info->img_info.images[idx], _TSK_T("\\\\.\\"), 4) == 0)) {
+            offset_to_read = (offset_to_read / raw_info->img_info.sector_size) * raw_info->img_info.sector_size;
+            len_to_read += raw_info->img_info.sector_size; // this length will already be a multiple of sector size
+            sector_aligned_buf = (char *)tsk_malloc(len_to_read);
+            if (sector_aligned_buf == NULL) {
+                tsk_error_reset();
+                tsk_error_set_errno(TSK_ERR_IMG_READ);
+                tsk_error_set_errstr("raw_read: error allocating memory to read file \"%" PRIttocTSK
+                    "\" offset: %" PRIdOFF " read len: %" PRIuSIZE,
+                    raw_info->img_info.images[idx], offset_to_read, len_to_read);
+                return -1;
+            }
+            buf_pointer = &sector_aligned_buf;
+        }
+
         DWORD nread;
-        if (cimg->seek_pos != rel_offset) {
+        if (cimg->seek_pos != offset_to_read) {
             LARGE_INTEGER li;
-            li.QuadPart = rel_offset;
+            li.QuadPart = offset_to_read;
 
             li.LowPart = SetFilePointer(cimg->fd, li.LowPart,
                 &li.HighPart, FILE_BEGIN);
 
             if ((li.LowPart == INVALID_SET_FILE_POINTER) &&
                 (GetLastError() != NO_ERROR)) {
+                if (sector_aligned_buf != NULL) {
+                    free(sector_aligned_buf);
+                }
                 int lastError = (int)GetLastError();
                 tsk_error_reset();
                 tsk_error_set_errno(TSK_ERR_IMG_SEEK);
                 tsk_error_set_errstr("raw_read: file \"%" PRIttocTSK
                     "\" offset %" PRIdOFF " seek - %d",
-                    raw_info->img_info.images[idx], rel_offset,
+                    raw_info->img_info.images[idx], offset_to_read,
                     lastError);
                 return -1;
             }
-            cimg->seek_pos = rel_offset;
+            cimg->seek_pos = offset_to_read;
         }
 
         //For physical drive when the buffer is larger than remaining data,
         // WinAPI ReadFile call returns -1
         //in this case buffer of exact length must be passed to ReadFile
-        if ((raw_info->is_winobj) && (rel_offset + (TSK_OFF_T)len > raw_info->img_info.size ))
-            len = (size_t)(raw_info->img_info.size - rel_offset);
+        if ((raw_info->is_winobj) && (offset_to_read + (TSK_OFF_T)len_to_read > raw_info->img_info.size ))
+            len_to_read = (size_t)(raw_info->img_info.size - offset_to_read);
 
-        if (FALSE == ReadFile(cimg->fd, buf, (DWORD) len, &nread, NULL)) {
+        if (FALSE == ReadFile(cimg->fd, *buf_pointer, (DWORD)len_to_read, &nread, NULL)) {
+            if (sector_aligned_buf != NULL) {
+                free(sector_aligned_buf);
+            }
             int lastError = GetLastError();
             tsk_error_reset();
             tsk_error_set_errno(TSK_ERR_IMG_READ);
             tsk_error_set_errstr("raw_read: file \"%" PRIttocTSK
                 "\" offset: %" PRIdOFF " read len: %" PRIuSIZE " - %d",
-                raw_info->img_info.images[idx], rel_offset, len,
+                raw_info->img_info.images[idx], offset_to_read, len_to_read,
                 lastError);
             return -1;
         }
@@ -166,24 +196,41 @@ raw_read_segment(IMG_RAW_INFO * raw_info, int idx, char *buf,
         // ReadFile returns TRUE and sets nread to zero.
         // We need to check if we've reached the end of a file and set nread to
         // the number of bytes read.
-        if ((raw_info->is_winobj) && (nread == 0) && (rel_offset + len == raw_info->img_info.size)) {
-            nread = (DWORD)len;
+        if ((raw_info->is_winobj) && (nread == 0) && (offset_to_read + len_to_read == raw_info->img_info.size)) {
+            nread = (DWORD)len_to_read;
         }
         cnt = (ssize_t) nread;
 
         if (raw_info->img_writer != NULL) {
             /* img_writer is not used with split images, so rel_offset is just the normal offset*/
-            TSK_RETVAL_ENUM result = raw_info->img_writer->add(raw_info->img_writer, rel_offset, buf, cnt);
+            TSK_RETVAL_ENUM result = raw_info->img_writer->add(raw_info->img_writer, offset_to_read, *buf_pointer, cnt);
             // If WriteFile returns error in the addNewBlock, hadErrorExtending is 1
             if (raw_info->img_writer->inFinalizeImageWriter && raw_info->img_writer->hadErrorExtending) {
+                if (sector_aligned_buf != NULL) {
+                    free(sector_aligned_buf);
+                }
                 tsk_error_reset();
                 tsk_error_set_errno(TSK_ERR_IMG_WRITE);
                 tsk_error_set_errstr("raw_read: file \"%" PRIttocTSK
                     "\" offset: %" PRIdOFF " tsk_img_writer_add cnt: %" PRIuSIZE " - %d",
-                    raw_info->img_info.images[idx], rel_offset, cnt
+                    raw_info->img_info.images[idx], offset_to_read, cnt
                     );
                 return -1;
             }
+        }
+
+        // Update this with the actual bytes read
+        cimg->seek_pos += cnt;
+
+        // If we had to do the sector alignment, copy the result into the original buffer and fix
+        // the number of bytes read
+        if (sector_aligned_buf != NULL) {
+            memcpy(buf, sector_aligned_buf + rel_offset % raw_info->img_info.sector_size, len);
+            cnt = cnt - offset_to_read % raw_info->img_info.sector_size;
+            if (cnt < 0) {
+                cnt = -1;
+            }
+            free(sector_aligned_buf);
         }
     }
 #else
@@ -208,8 +255,8 @@ raw_read_segment(IMG_RAW_INFO * raw_info, int idx, char *buf,
             rel_offset, len, strerror(errno));
         return -1;
     }
-#endif
     cimg->seek_pos += cnt;
+#endif
 
     return cnt;
 }
@@ -235,8 +282,6 @@ raw_read(TSK_IMG_INFO * img_info, TSK_OFF_T offset, char *buf, size_t len)
     IMG_RAW_INFO *raw_info = (IMG_RAW_INFO *) img_info;
     int i;
 
-    printf("@@@ In raw_read!\n");
-    fflush(stdout);
     if (tsk_verbose) {
         tsk_fprintf(stderr,
             "raw_read: byte offset: %" PRIdOFF " len: %" PRIuSIZE "\n",
@@ -282,8 +327,7 @@ raw_read(TSK_IMG_INFO * img_info, TSK_OFF_T offset, char *buf, size_t len)
 					PRIdOFF " len: %" PRIdOFF "\n", i, rel_offset,
                     (TSK_OFF_T) read_len);
             }
-
-            printf("@@ raw_read_segment rel_offset: %lld   len: %lld\n", rel_offset, read_len);
+                
             cnt = raw_read_segment(raw_info, i, buf, read_len, rel_offset);
             if (cnt < 0) {
                 return -1;
