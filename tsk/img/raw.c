@@ -327,7 +327,7 @@ raw_read(TSK_IMG_INFO * img_info, TSK_OFF_T offset, char *buf, size_t len)
 					PRIdOFF " len: %" PRIdOFF "\n", i, rel_offset,
                     (TSK_OFF_T) read_len);
             }
-                
+
             cnt = raw_read_segment(raw_info, i, buf, read_len, rel_offset);
             if (cnt < 0) {
                 return -1;
