@@ -1130,6 +1130,13 @@ public class SleuthkitJNI {
 	 *                          TSK
 	 */
 	static long openFsPool(long imgHandle, long fsOffset, long poolHandle, long poolBlock, SleuthkitCase skCase) throws TskCoreException {
+
+		// We need to do this before getting the TSK write lock to prevent a possible deadlock.
+		String identifierFromCase = "";
+		if (skCase != null) {
+			identifierFromCase = skCase.getUniqueCaseIdentifier();
+		}
+
 		/*
 		 * Currently, our APFS code is not thread-safe and it is the only code
 		 * that uses pools. To prevent crashes, we make any reads to a file system
@@ -1143,7 +1150,7 @@ public class SleuthkitJNI {
 				if (skCase == null) {
 					caseIdentifier = HandleCache.getDefaultCaseIdentifier();
 				} else {
-					caseIdentifier = skCase.getUniqueCaseIdentifier();
+					caseIdentifier = identifierFromCase;
 				}
 				final Map<Long, Long> imgOffSetToFsHandle = HandleCache.getCaseHandles(caseIdentifier).fsHandleCache.get(imgHandle);
 				if (imgOffSetToFsHandle == null) {
