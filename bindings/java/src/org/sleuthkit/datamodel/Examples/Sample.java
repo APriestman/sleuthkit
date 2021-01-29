@@ -25,6 +25,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.sleuthkit.datamodel.AbstractFile;
 import org.sleuthkit.datamodel.Content;
+import org.sleuthkit.datamodel.Host;
 import org.sleuthkit.datamodel.Image;
 import org.sleuthkit.datamodel.SleuthkitCase;
 import org.sleuthkit.datamodel.SleuthkitJNI.CaseDbHandle.AddImageProcess;
@@ -45,8 +46,9 @@ public class Sample {
 			AddImageProcess process = sk.makeAddImageProcess(timezone, true, false, "");
 			ArrayList<String> paths = new ArrayList<String>();
 			paths.add(imagePath);
+			Host host = sk.getHostManager().getOrCreateHost("sample_host");
 			try {
-				process.run(UUID.randomUUID().toString(), paths.toArray(new String[paths.size()]), 0);
+				process.run(UUID.randomUUID().toString(), paths.toArray(new String[paths.size()]), 0, host);
 			} catch (TskDataException ex) {
 				Logger.getLogger(Sample.class.getName()).log(Level.SEVERE, null, ex);
 			}

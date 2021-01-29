@@ -6153,6 +6153,7 @@ public class SleuthkitCase {
 	 *                          data source.
 	 * @param timeZone          The time zone used to process the data source,
 	 *                          may be the empty string.
+	 * @param host              The host associated with this data source
 	 * @param transaction       A transaction in the scope of which the
 	 *                          operation is to be performed, managed by the
 	 *                          caller.
@@ -6161,7 +6162,7 @@ public class SleuthkitCase {
 	 *
 	 * @throws TskCoreException if there is an error adding the data source.
 	 */
-	public LocalFilesDataSource addLocalFilesDataSource(String deviceId, String rootDirectoryName, String timeZone, CaseDbTransaction transaction) throws TskCoreException {
+	public LocalFilesDataSource addLocalFilesDataSource(String deviceId, String rootDirectoryName, String timeZone, Host host, CaseDbTransaction transaction) throws TskCoreException {
 		acquireSingleUserCaseWriteLock();
 		Statement statement = null;
 		try {
@@ -6173,8 +6174,8 @@ public class SleuthkitCase {
 			// Insert a row for the virtual directory of the data source into
 			// the data_source_info table.
 			statement = connection.createStatement();
-			statement.executeUpdate("INSERT INTO data_source_info (obj_id, device_id, time_zone) "
-					+ "VALUES(" + newObjId + ", '" + deviceId + "', '" + timeZone + "');");
+			statement.executeUpdate("INSERT INTO data_source_info (obj_id, device_id, time_zone, host_id) "
+					+ "VALUES(" + newObjId + ", '" + deviceId + "', '" + timeZone + "', " + host.getId() + ");");
 
 			// Insert a row for the root virtual directory of the data source
 			// into the tsk_files table. Note that its data source object id is
@@ -6237,6 +6238,7 @@ public class SleuthkitCase {
 	 * @param sha1        SHA1 hash
 	 * @param sha256      SHA256 hash
 	 * @param deviceId    Device ID
+	 * @param host        Host
 	 * @param transaction Case DB transaction
 	 *
 	 * @return the newly added Image
@@ -6245,7 +6247,7 @@ public class SleuthkitCase {
 	 */
 	public Image addImage(TskData.TSK_IMG_TYPE_ENUM type, long sectorSize, long size, String displayName, List<String> imagePaths,
 			String timezone, String md5, String sha1, String sha256,
-			String deviceId,
+			String deviceId, Host host,
 			CaseDbTransaction transaction) throws TskCoreException {
 		acquireSingleUserCaseWriteLock();
 		Statement statement = null;
@@ -6288,6 +6290,7 @@ public class SleuthkitCase {
 			preparedStatement.setString(2, deviceId);
 			preparedStatement.setString(3, timezone);
 			preparedStatement.setLong(4, new Date().getTime());
+			preparedStatement.setLong(5, host.getId());
 			connection.executeUpdate(preparedStatement);
 
 			// Create the new Image object
@@ -11834,7 +11837,7 @@ public class SleuthkitCase {
 		INSERT_IMAGE_NAME("INSERT INTO tsk_image_names (obj_id, name, sequence) VALUES (?, ?, ?)"),
 		INSERT_IMAGE_INFO("INSERT INTO tsk_image_info (obj_id, type, ssize, tzone, size, md5, sha1, sha256, display_name)"
 				+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"),
-		INSERT_DATA_SOURCE_INFO("INSERT INTO data_source_info (obj_id, device_id, time_zone, added_date_time) VALUES (?, ?, ?, ?)"),
+		INSERT_DATA_SOURCE_INFO("INSERT INTO data_source_info (obj_id, device_id, time_zone, added_date_time, host_id) VALUES (?, ?, ?, ?, ?)"),
 		INSERT_VS_INFO("INSERT INTO tsk_vs_info (obj_id, vs_type, img_offset, block_size) VALUES (?, ?, ?, ?)"),
 		INSERT_VS_PART_SQLITE("INSERT INTO tsk_vs_parts (obj_id, addr, start, length, desc, flags) VALUES (?, ?, ?, ?, ?, ?)"),
 		INSERT_VS_PART_POSTGRESQL("INSERT INTO tsk_vs_parts (obj_id, addr, start, length, descr, flags) VALUES (?, ?, ?, ?, ?, ?)"),
