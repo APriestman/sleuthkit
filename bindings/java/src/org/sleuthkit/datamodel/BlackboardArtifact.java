@@ -700,9 +700,12 @@ public class BlackboardArtifact implements Content {
 
 	@Override
 	public AnalysisResultAdded newAnalysisResult(BlackboardArtifact.Type artifactType, Score score, String conclusion, String configuration, String justification, Collection<BlackboardAttribute> attributesList) throws TskCoreException {
+		// Do the database query before opening the transaction.
+		long dataSourceId = this.getDataSource().getId();
+		
 		CaseDbTransaction trans = sleuthkitCase.beginTransaction();
 		try {
-			AnalysisResultAdded resultAdded = sleuthkitCase.getBlackboard().newAnalysisResult(artifactType, this.getId(), this.getDataSource().getId(), score, conclusion, configuration, justification, attributesList, trans);
+			AnalysisResultAdded resultAdded = sleuthkitCase.getBlackboard().newAnalysisResult(artifactType, this.getId(), dataSourceId, score, conclusion, configuration, justification, attributesList, trans);
 
 			trans.commit();
 			return resultAdded;
