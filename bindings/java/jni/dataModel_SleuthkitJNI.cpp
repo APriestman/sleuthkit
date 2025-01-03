@@ -178,6 +178,7 @@ castFsInfo(JNIEnv * env, jlong ptr)
     if (!castImgInfo(env, (jlong) lcl->img_info)) {
         return 0;
     }
+
     return lcl;
 }
 
@@ -952,6 +953,8 @@ JNIEXPORT void JNICALL
         env->ReleaseStringUTFChars(timeZone, time_zone);
     }
 
+    tskAuto->setFileSystemPassword("DigitalForensics");
+
     // Add the data source.
     uint8_t ret = 0;
     if ( (ret = tskAuto->startAddImage((int) numImgs, imagepaths8,
@@ -1054,6 +1057,8 @@ Java_org_sleuthkit_datamodel_SleuthkitJNI_runAddImgNat(JNIEnv * env,
     else {
         tskAuto->disableImageWriter();
     }
+
+    tskAuto->setFileSystemPassword("DigitalForensics");
 
     // Add the data source.
     uint8_t ret = 0;
@@ -1475,8 +1480,8 @@ JNIEXPORT jlong JNICALL Java_org_sleuthkit_datamodel_SleuthkitJNI_openFsNat
 
     TSK_FS_INFO* fs_info;
     fs_info =
-        tsk_fs_open_img(img_info, (TSK_OFF_T)fs_offset,
-            TSK_FS_TYPE_DETECT);
+        tsk_fs_open_img_decrypt(img_info, (TSK_OFF_T)fs_offset,
+            TSK_FS_TYPE_DETECT, "DigitalForensics");
     if (fs_info == NULL) {
         setThrowTskCoreError(env, tsk_error_get());
     }
@@ -1509,7 +1514,7 @@ JNIEXPORT jlong JNICALL Java_org_sleuthkit_datamodel_SleuthkitJNI_openFsDecryptN
     TSK_FS_INFO *fs_info;
     fs_info =
         tsk_fs_open_img_decrypt(img_info, (TSK_OFF_T) fs_offset,
-        TSK_FS_TYPE_DETECT, password);
+        TSK_FS_TYPE_DETECT, "DigitalForensics");
     env->ReleaseStringUTFChars(passwordJ, (const char*)password);
 
     if (fs_info == NULL) {

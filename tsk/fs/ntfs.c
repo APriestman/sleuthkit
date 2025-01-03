@@ -151,6 +151,7 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
     uint16_t sig_seq;
     ntfs_mft *mft;
 
+    printf("ntfs_dinode_lookup %" PRIx64 "\n", a_mftnum);
 
     /* sanity checks */
     if (!a_buf) {
@@ -191,7 +192,7 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
      * $MFT itself, in which case the calculation is easy
      */
     if (!a_ntfs->mft_data) {
-
+        printf("  MFT not loaded\n");
         /* This is just a random check with the assumption being that
          * we don't want to just do a guess calculation for a very large
          * MFT entry
@@ -220,6 +221,8 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
 
         /* The byte offset within the $Data stream */
         offset = a_mftnum * a_ntfs->mft_rsize_b;
+        printf("  MFT is loaded\n");
+        printf("  offset: %" PRIx64 "\n", offset);
 
         /* NOTE: data_run values are in clusters
          *
@@ -302,6 +305,8 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
     /* can we do just one read or do we need multiple? */
     if (mftaddr2_b) {
         ssize_t cnt;
+        printf("  Reading multiple parts\n");
+        printf("    Part 1 offset: %" PRIx64 ", len: %x", mftaddr_b, mftaddr_len);
         /* read the first part into mft */
         cnt = tsk_fs_read(&a_ntfs->fs_info, mftaddr_b, a_buf, mftaddr_len);
         if (cnt != (ssize_t)mftaddr_len) {
@@ -316,6 +321,7 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
         }
 
         /* read the second part into mft */
+        printf("    Part 2 offset: %" PRIx64 ", len: %x", mftaddr2_b, a_ntfs->mft_rsize_b - mftaddr_len);
         cnt = tsk_fs_read
             (&a_ntfs->fs_info, mftaddr2_b,
             (char *) ((uintptr_t) a_buf + (uintptr_t) mftaddr_len),
@@ -332,6 +338,8 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
         }
     }
     else {
+        printf("  Reading single part\n");
+        printf("    Offset: %" PRIx64 ", len: %x", mftaddr_b, a_ntfs->mft_rsize_b);
         ssize_t cnt;
         /* read the raw entry into mft */
         cnt =
@@ -376,6 +384,11 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
      */
     /* sanity check so we don't run over in the next loop */
     mft = (ntfs_mft *) a_buf;
+    printf("  ");
+    for (int i = 0; i < a_ntfs->mft_rsize_b; i++) {
+        printf("%02x", a_buf[i] & 0xff);
+    }
+    printf("\n");
     if ((tsk_getu16(fs->endian, mft->upd_cnt) > 0) &&
         (((uint32_t) (tsk_getu16(fs->endian,
                         mft->upd_cnt) - 1) * NTFS_UPDATE_SEQ_STRIDE) >
@@ -415,6 +428,7 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
     upd = (ntfs_upd *) ((uintptr_t) a_buf + upd_off);
     /* Get the sequence value that each 16-bit value should be */
     sig_seq = tsk_getu16(fs->endian, upd->upd_val);
+    printf("  sig_seq: %04x (read from offset 0x%x)\n", sig_seq, upd_off);
     /* cycle through each sector */
     for (i = 1; i < tsk_getu16(fs->endian, mft->upd_cnt); i++) {
         uint8_t *new_val, *old_val;
@@ -433,13 +447,14 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
         /* get the current sequence value */
         uint16_t cur_seq =
             tsk_getu16(fs->endian, (uintptr_t) a_buf + offset);
+        printf("  cur_seq: %04x (read from offset 0x%x)\n", cur_seq, offset);
         if (cur_seq != sig_seq) {
             /* get the replacement value */
             uint16_t cur_repl =
                 tsk_getu16(fs->endian, &upd->upd_seq + (i - 1) * 2);
             tsk_error_reset();
             tsk_error_set_errno(TSK_ERR_FS_GENFS);
-
+            printf("  Got incorrect update sequence error\n");
             tsk_error_set_errstr
                 ("Incorrect update sequence value in MFT entry\nSignature Value: 0x%"
                 PRIx16 " Actual Value: 0x%" PRIx16
@@ -463,6 +478,7 @@ ntfs_dinode_lookup(NTFS_INFO * a_ntfs, char *a_buf, TSK_INUM_T a_mftnum)
         *old_val = *new_val;
     }
 
+    printf("  Success\n");
     return TSK_OK;
 }
 

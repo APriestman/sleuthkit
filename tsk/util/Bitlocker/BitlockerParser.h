@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <set>
+#include <mutex>
 #include "tsk/base/tsk_base_i.h"
 #include "tsk/img/tsk_img_i.h"
 
@@ -156,6 +157,10 @@ private:
     BITLOCKER_STATUS parseVolumeHeader();
     BITLOCKER_STATUS setKeys(MetadataEntry* fvekEntry);
     BITLOCKER_STATUS setKeys(MetadataValueKey* fvek, BITLOCKER_ENCRYPTION_TYPE type);
+
+#ifdef TSK_MULTITHREAD_LIB
+    std::mutex _ctx_lock{};
+#endif
 
     void clearFveMetadataEntries() {
         for (auto it = m_metadataEntries.begin(); it != m_metadataEntries.end(); ++it) {

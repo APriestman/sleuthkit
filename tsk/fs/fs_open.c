@@ -155,6 +155,14 @@ tsk_fs_open_img_decrypt(TSK_IMG_INFO * a_img_info, TSK_OFF_T a_offset,
         return NULL;
     }
 
+    printf("tsk_fs_open_img_decrypt - ");
+    if (a_pass == NULL) {
+        printf(" null password\n");
+    }
+    else {
+        printf(" password: <<%s>>\n", a_pass);
+    }
+
 	/* If the image is type IMG_DIR_INFO, then the file system is
 	 * automatically the logical directory file system type. It is an
 	 * error to try to use any other file system type in that case.

@@ -106,6 +106,7 @@ class TskAuto {
     * Set a password that will be used when trying to open each file system
     */
     void setFileSystemPassword(std::string fileSystemPassword) { m_fileSystemPassword = fileSystemPassword; }
+    std::string getFileSystemPassword() { return m_fileSystemPassword; }
 
     /**
      * TskAuto calls this method before it processes the volume system that is found in an 

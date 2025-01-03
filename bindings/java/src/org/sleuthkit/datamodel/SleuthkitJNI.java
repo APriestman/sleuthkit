@@ -1276,11 +1276,11 @@ public class SleuthkitJNI {
 		 * reads to the APFS pool single-threaded by obtaining a write
 		 * lock instead of a read lock.
 		 */
-		if (withinPool) {
+		//if (withinPool) {
 			getTSKWriteLock();
-		} else {
-			getTSKReadLock();
-		}
+		//} else {
+		//	getTSKReadLock();
+		//}
 		try {
 			long fileHandle = openFileNat(fsHandle, fileId, attrType.getValue(), convertSignedToUnsigned(attrId));
 			synchronized (HandleCache.cacheLock) {
@@ -1300,11 +1300,11 @@ public class SleuthkitJNI {
 			}
 			return fileHandle;
 		} finally {
-			if (withinPool) {
+			//if (withinPool) {
 				releaseTSKWriteLock();
-			} else {
-				releaseTSKReadLock();
-			}
+			//} else {
+			//	releaseTSKReadLock();
+			//}
 		}
 	}
 
